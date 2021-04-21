@@ -11,6 +11,7 @@ import { useActiveWeb3React } from './index'
 import { useBytes32TokenContract, useTokenContract } from './useContract'
 import { filterTokens } from '../components/SearchModal/filtering'
 import { arrayify } from 'ethers/lib/utils'
+import { TokenType } from 'utils/itemIntegration'
 
 // reduce token map into standard address <-> Token mapping, optionally include user added tokens
 function useTokensFromMap(tokenMap: TokenAddressMap, includeUserAdded: boolean): { [address: string]: Token } {
@@ -51,8 +52,8 @@ export function useDefaultTokens(): { [address: string]: Token } {
   return useTokensFromMap(defaultList, false)
 }
 
-export function useAllTokens(): { [address: string]: Token } {
-  const allTokens = useCombinedActiveList()
+export function useAllTokens(tokenType? : TokenType, address? : string): { [address: string]: Token } {
+  const allTokens = useCombinedActiveList(tokenType, address)
   return useTokensFromMap(allTokens, true)
 }
 

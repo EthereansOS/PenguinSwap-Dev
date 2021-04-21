@@ -21,8 +21,9 @@ import useToggle from 'hooks/useToggle'
 import { useOnClickOutside } from 'hooks/useOnClickOutside'
 import useTheme from 'hooks/useTheme'
 import ImportRow from './ImportRow'
-import { Edit } from 'react-feather'
+import { ArrowLeft, Edit } from 'react-feather'
 import { ButtonLight } from 'components/Button'
+import { TokenType, getCollectionOfItem } from 'utils/itemIntegration'
 
 const ContentWrapper = styled(Column)`
   width: 100%;
@@ -50,6 +51,7 @@ interface CurrencySearchProps {
   showManageView: () => void
   showImportView: () => void
   setImportToken: (token: Token) => void
+  tokenType?: TokenType
 }
 
 export function CurrencySearch({
@@ -61,7 +63,8 @@ export function CurrencySearch({
   isOpen,
   showManageView,
   showImportView,
-  setImportToken
+  setImportToken,
+  tokenType
 }: CurrencySearchProps) {
   const { t } = useTranslation()
   const { chainId } = useActiveWeb3React()
@@ -70,7 +73,8 @@ export function CurrencySearch({
   const fixedList = useRef<FixedSizeList>()
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [invertSearchOrder] = useState<boolean>(false)
-  const allTokens = useAllTokens()
+  const [itemCollection, setItemCollection] = useState(null);
+  const allTokens = useAllTokens(tokenType, itemCollection)
 
   // if they input an address, use it
   const isAddressSearch = isAddress(searchQuery)
@@ -85,6 +89,15 @@ export function CurrencySearch({
       })
     }
   }, [isAddressSearch])
+
+  useEffect(() => {
+    if(tokenType !== TokenType.Item) {
+      return setItemCollection(null);
+    }
+    if(tokenType === TokenType.Item && !itemCollection && selectedCurrency) {
+      setItemCollection(getCollectionOfItem((selectedCurrency as Token).address)?.address)
+    }
+  }, [])
 
   const showETH: boolean = useMemo(() => {
     const s = searchQuery.toLowerCase().trim()
@@ -129,10 +142,13 @@ export function CurrencySearch({
 
   const handleCurrencySelect = useCallback(
     (currency: Currency) => {
+      if(tokenType === TokenType.Item && !itemCollection) {
+        return setItemCollection((currency as Token).address)
+      }
       onCurrencySelect(currency)
       onDismiss()
     },
-    [onDismiss, onCurrencySelect]
+    [onDismiss, onCurrencySelect, tokenType, itemCollection]
   )
 
   // clear the input on open
@@ -211,6 +227,17 @@ export function CurrencySearch({
       </PaddedColumn>
 
       <Separator />
+      {itemCollection && <>
+        <ButtonText onClick={() => setItemCollection(null)} color={theme.blue1} className="list-token-manage-button">
+          <RowFixed>
+            <IconWrapper size="16px" marginRight="6px">
+              <ArrowLeft/>
+            </IconWrapper>
+            <TYPE.main color={theme.blue1}>Back</TYPE.main>
+          </RowFixed>
+        </ButtonText>
+        <Separator />
+      </>}
       {searchToken && !searchTokenIsAdded ? (
               <Column style={{ padding: '20px 0', height: '100%' }}>
                 <ImportRow token={searchToken} showImportView={showImportView} setImportToken={setImportToken} />
@@ -238,7 +265,11 @@ export function CurrencySearch({
             ) : (
               <Column style={{ padding: '20px', height: '100%' }}>
                 <TYPE.main color={theme.text3} textAlign="center" mb="20px">
-                  No results found in active lists.
+                  {
+                    tokenType === TokenType.Item
+                    ? `Loading ${itemCollection ? "Items" : "Collections"}...`
+                    : 'No results found in active lists.'
+                  }
                 </TYPE.main>
                 {inactiveTokens &&
                   inactiveTokens.length > 0 &&
@@ -280,16 +311,16 @@ export function CurrencySearch({
                  </ButtonLight>
                </Row>
              )}
-           <Footer>
+            <Footer>
              <Row justify="center">
-               <ButtonText onClick={showManageView} color={theme.blue1} className="list-token-manage-button">
+              {tokenType !== TokenType.Item && <ButtonText onClick={showManageView} color={theme.blue1} className="list-token-manage-button">
                  <RowFixed>
                    <IconWrapper size="16px" marginRight="6px">
                      <Edit />
                    </IconWrapper>
                    <TYPE.main color={theme.blue1}>Manage</TYPE.main>
                  </RowFixed>
-               </ButtonText>
+               </ButtonText>}
              </Row>
            </Footer>
          </ContentWrapper>

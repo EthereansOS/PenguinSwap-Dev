@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { Dispatch, SetStateAction } from 'react'
 import styled from 'styled-components'
 import { darken } from 'polished'
 import { useTranslation } from 'react-i18next'
@@ -11,6 +11,8 @@ import Settings from '../Settings'
 import { useDispatch } from 'react-redux'
 import { AppDispatch } from 'state'
 import { resetMintState } from 'state/mint/actions'
+import { TokenType } from 'utils/itemIntegration'
+import { ButtonRadio } from 'components/Button'
 
 const Tabs = styled.div`
   ${({ theme }) => theme.flexRowNoWrap}
@@ -71,7 +73,15 @@ export function SwapPoolTabs({ active }: { active: 'swap' | 'pool' }) {
   )
 }
 
-export function FindPoolTabs() {
+interface FindPoolTabs {
+  tokenType? : TokenType
+  onTokenTypeChange? : Dispatch<SetStateAction<TokenType>>
+}
+
+export function FindPoolTabs({
+  tokenType,
+  onTokenTypeChange
+} : FindPoolTabs) {
   return (
     <Tabs>
       <RowBetween style={{ padding: '1rem 1rem 0 1rem' }}>
@@ -79,6 +89,8 @@ export function FindPoolTabs() {
           <StyledArrowLeft />
         </HistoryLink>
         <ActiveText>Import Pool</ActiveText>
+        {onTokenTypeChange && <ButtonRadio active={tokenType === TokenType.ERC20} onClick={() => onTokenTypeChange(TokenType.ERC20)}>ERC-20</ButtonRadio>}
+        {onTokenTypeChange && <ButtonRadio active={tokenType === TokenType.Item} onClick={() => onTokenTypeChange(TokenType.Item)}>Item</ButtonRadio>}
         <Settings />
       </RowBetween>
     </Tabs>

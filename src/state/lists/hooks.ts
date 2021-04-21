@@ -7,6 +7,8 @@ import { useSelector } from 'react-redux'
 import { AppState } from '../index'
 import sortByListPriority from 'utils/listSort'
 import UNSUPPORTED_TOKEN_LIST from '../../constants/tokenLists/uniswap-v2-unsupported.tokenlist.json'
+import { TokenType, loadItemCollectionsSync, loadItemCollectionTokensSync } from 'utils/itemIntegration'
+import { useActiveWeb3React } from 'hooks'
 
 type TagDetails = Tags[keyof Tags]
 export interface TagInfo extends TagDetails {
@@ -127,6 +129,15 @@ function useCombinedTokenMapFromUrls(urls: string[] | undefined): TokenAddressMa
   }, [lists, urls])
 }
 
+function getItemListTokenMap(library: any, chainId: ChainId, address : string) : TokenAddressMap {
+  const itemsList = address ? loadItemCollectionTokensSync(address) : loadItemCollectionsSync(library, chainId);
+  const cached = listCache?.get(itemsList);
+  if(cached && itemsList.tokens.length > 0 && Object.values(cached[chainId]).length === 0) {
+    listCache?.delete(itemsList);
+  }
+  return listToTokenMap(itemsList)
+}
+
 // filter out unsupported lists
 export function useActiveListUrls(): string[] | undefined {
   return useSelector<AppState, AppState['lists']['activeListUrls']>(state => state.lists.activeListUrls)?.filter(
@@ -141,11 +152,13 @@ export function useInactiveListUrls(): string[] {
 }
 
 // get all the tokens from active lists, combine with local default tokens
-export function useCombinedActiveList(): TokenAddressMap {
+export function useCombinedActiveList(tokenType? : TokenType, address? : string): TokenAddressMap {
   const activeListUrls = useActiveListUrls()
   const activeTokens = useCombinedTokenMapFromUrls(activeListUrls)
   const defaultTokenMap = listToTokenMap(DEFAULT_TOKEN_LIST)
-  return combineMaps(activeTokens, defaultTokenMap)
+  const {library, chainId} = useActiveWeb3React()
+  const itemListTokenMap = getItemListTokenMap(library, chainId, address)
+  return tokenType === TokenType.Item ? itemListTokenMap : combineMaps(activeTokens, defaultTokenMap);
 }
 
 // all tokens from inactive lists

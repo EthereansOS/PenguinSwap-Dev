@@ -8,6 +8,7 @@ import usePrevious from 'hooks/usePrevious'
 import Manage from './Manage'
 import { TokenList } from '@uniswap/token-lists'
 import { ImportList } from './ImportList'
+import { TokenType } from 'utils/itemIntegration'
 
 interface CurrencySearchModalProps {
   isOpen: boolean
@@ -16,6 +17,7 @@ interface CurrencySearchModalProps {
   onCurrencySelect: (currency: Currency) => void
   otherSelectedCurrency?: Currency | null
   showCommonBases?: boolean
+  tokenType?: TokenType
 }
 
 export enum CurrencyModalView {
@@ -31,7 +33,8 @@ export default function CurrencySearchModal({
   onCurrencySelect,
   selectedCurrency,
   otherSelectedCurrency,
-  showCommonBases = false
+  showCommonBases = false,
+  tokenType
 }: CurrencySearchModalProps) {
   const [modalView, setModalView] = useState<CurrencyModalView>(CurrencyModalView.manage)
   const lastOpen = useLast(isOpen)
@@ -75,6 +78,7 @@ export default function CurrencySearchModal({
           showImportView={() => setModalView(CurrencyModalView.importToken)}
           setImportToken={setImportToken}
           showManageView={() => setModalView(CurrencyModalView.manage)}
+          tokenType={tokenType}
         />
       ) : modalView === CurrencyModalView.importToken && importToken ? (
         <ImportToken

@@ -49,6 +49,7 @@ import Loader from '../../components/Loader'
 import { useIsTransactionUnsupported } from 'hooks/Trades'
 import UnsupportedCurrencyFooter from 'components/swap/UnsupportedCurrencyFooter'
 import { isTradeBetter } from 'utils/trades'
+import { TokenType } from '../../utils/itemIntegration'
 export default function Swap() {
   const loadedUrlParams = useDefaultsFromURLSearch()
 
@@ -295,6 +296,8 @@ export default function Swap() {
   ])
   const swapIsUnsupported = useIsTransactionUnsupported(currencies?.INPUT, currencies?.OUTPUT)
 
+  const [tokenType, setTokenType] = useState<TokenType>(TokenType.ERC20);
+
   return (
     <>
       <TokenWarningModal
@@ -304,7 +307,7 @@ export default function Swap() {
       />
       <SwapPoolTabs active={'swap'} />
       <AppBody>
-      <SwapHeader />
+      <SwapHeader tokenType={tokenType} onTokenTypeChange={setTokenType}/>
       {/* <Separator /> */}
         <Wrapper id="swap-page">
           <ConfirmSwapModal
@@ -332,6 +335,7 @@ export default function Swap() {
               onCurrencySelect={handleInputSelect}
               otherCurrency={currencies[Field.OUTPUT]}
               id="swap-currency-input"
+              tokenType={tokenType}
             />
             <AutoColumn justify="space-between">
               <AutoRow justify={isExpertMode ? 'space-between' : 'center'} style={{ padding: '0 1rem' }}>
@@ -361,6 +365,7 @@ export default function Swap() {
               onCurrencySelect={handleOutputSelect}
               otherCurrency={currencies[Field.INPUT]}
               id="swap-currency-output"
+              tokenType={tokenType}
             />
 
             {recipient !== null && !showWrap ? (

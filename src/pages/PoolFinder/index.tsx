@@ -20,6 +20,7 @@ import AppBody from '../AppBody'
 import { Dots } from '../Pool/styleds'
 import { BlueCard } from '../../components/Card'
 import { TYPE } from '../../theme'
+import { TokenType } from 'utils/itemIntegration'
 
 enum Fields {
   TOKEN0 = 0,
@@ -78,9 +79,11 @@ export default function PoolFinder() {
     </LightCard>
   )
 
+  const [tokenType, setTokenType] = useState<TokenType>(TokenType.ERC20);
+
   return (
     <AppBody>
-      <FindPoolTabs />
+      <FindPoolTabs tokenType={tokenType} onTokenTypeChange={setTokenType}/>
       <AutoColumn style={{ padding: '1rem' }} gap="md">
         <BlueCard>
           <AutoColumn gap="10px">
@@ -198,6 +201,7 @@ export default function PoolFinder() {
         onDismiss={handleSearchDismiss}
         showCommonBases
         selectedCurrency={(activeField === Fields.TOKEN0 ? currency1 : currency0) ?? undefined}
+        tokenType={tokenType}
       />
     </AppBody>
   )

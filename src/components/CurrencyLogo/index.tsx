@@ -6,6 +6,7 @@ import EthereumLogo from '../../assets/images/ethereum-logo.png'
 import useHttpLocations from '../../hooks/useHttpLocations'
 import { WrappedTokenInfo } from '../../state/lists/hooks'
 import Logo from '../Logo'
+import { getItemData } from '../../utils/itemIntegration'
 
 const getTokenLogoURL = (address: string) =>
   `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/${address}/logo.png`
@@ -42,6 +43,11 @@ export default function CurrencyLogo({
     if (currency instanceof Token) {
       if (currency instanceof WrappedTokenInfo) {
         return [...uriLocations, getTokenLogoURL(currency.address)]
+      }
+
+      var item : any = getItemData(currency.address);
+      if(item) {
+        return [item.image];
       }
 
       return [getTokenLogoURL(currency.address)]
