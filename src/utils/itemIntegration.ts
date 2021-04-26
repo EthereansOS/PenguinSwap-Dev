@@ -1,9 +1,33 @@
 import { ethers } from 'ethers';
 import { getContract } from 'utils';
 import { TokenList } from '@uniswap/token-lists'
+const IpfsHttpClient = require('ipfs-http-client')
 
 const abi = new ethers.utils.AbiCoder();
 const window: any = global;
+
+if (!window.String.prototype.format) {
+    window.String.prototype.format = function() {
+        var args = arguments;
+        return this.replace(/{(\d+)}/g, function(match : any, number : any) {
+            return typeof args[number] != 'undefined' ? args[number] : match;
+        });
+    };
+}
+
+if (!window.String.prototype.firstLetterToUpperCase) {
+    window.String.prototype.firstLetterToUpperCase = function() {
+        if (this.replaceAll(" ", "") === '') {
+            return this;
+        } else {
+            var s = this.charAt(0).toUpperCase();
+            if (this.length > 1) {
+                s += this.substring(1);
+            }
+            return s;
+        }
+    };
+}
 
 window.voidEthereumAddress = window.voidEthereumAddress || '0x0000000000000000000000000000000000000000';
 window.voidEthereumAddressExtended = window.voidEthereumAddressExtended || '0x0000000000000000000000000000000000000000000000000000000000000000';
@@ -16,6 +40,7 @@ window.pragmaSolidityRule = window.pragmaSolidityRule || new RegExp("pragma( )+s
 window.base64Regex = window.base64Regex || new RegExp("data:([\\S]+)\\/([\\S]+);base64", "gs");
 
 window.contextURL = window.contextURL || "https://raw.githubusercontent.com/EthereansOS/ITEMS-Interface/main/data/context.json";
+window.traitTypesTemplatesURL = window.traitTypesTemplatesURL || "https://raw.githubusercontent.com/EthereansOS/ITEMS-Interface/main/data/traitTypesTemplates.json";
 window.trustwalletImgURLTemplate = window.trustwalletImgURLTemplate || "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/{0}/logo.png"
 
 window.metadatas = window.metadatas || {};
@@ -89,13 +114,290 @@ window.blockchainCall = window.blockchainCall || function blockchainCall() {
     return method.apply(method, args);
 };
 
+window.setData = window.setData || function setData(root: any, data : any) {
+    if (!root || !data) {
+        return;
+    }
+    var children = [...root.getElementsByTagName('input'), ...root.getElementsByTagName('select'), ...root.getElementsByTagName('textarea')];
+    children.forEach(function(input: any, i: any) {
+        var id = input.id || i;
+        !input.type || input.type !== 'checkbox' && input.type !== 'radio' && input.type !== 'file' && (input.value = data[id]);
+        input.type && (input.type === 'checkbox' || input.type === 'radio') && (input.checked = data[id] === true);
+        input.type === 'file' && (input.files = data[id]);
+    });
+};
+
+window.getData = window.getData || function getData(root : any, checkValidation : any) {
+    if (!root) {
+        return;
+    }
+    var data : any= {};
+    var children = [...root.getElementsByTagName('input'), ...root.getElementsByTagName('select'), ...root.getElementsByTagName('textarea')];
+    children.forEach(function(input : any, i: any) {
+        var id = ((input.id || i) + '').split('.');
+        var value;
+        input.type && input.type !== 'checkbox' && (value = input.value);
+        input.type === 'number' && (value = parseFloat(value.split(',').join('')));
+        input.type === 'number' && isNaN(value) && (value = parseFloat((input.dataset.defaultValue || '').split(',').join('')));
+        (input.type === 'checkbox' || input.type === 'radio') && (value = input.checked);
+        !input.type || input.type === 'hidden' && (value = input.value);
+        input.type === 'file' && (value = input.files);
+        if (checkValidation) {
+            if (!value) {
+                throw "Data is mandatory";
+            }
+            if (input.type === 'number' && isNaN(value)) {
+                throw "Number is mandatory";
+            }
+        }
+        var x : any = data;
+        x = x;
+        while (id.length > 0) {
+            var partialId = id.pop();
+            x = data[partialId] = data[partialId] || id.length === 0 ? value : {};
+        }
+    });
+
+    return data;
+};
+
+window.perform = window.perform || function perform(e : any) {
+    window.preventItem(e);
+    var target = e.currentTarget;
+    var view = target.view;
+    if ((view.state && view.state.performing) || target.className.toLowerCase().indexOf('disabled') !== -1) {
+        return;
+    }
+    var action = target.dataset.action;
+    var args : any = [];
+    for (var i = 1; i < arguments.length; i++) {
+        args.push(arguments[i]);
+    }
+    var _this = view;
+    var close = function close(e : any) {
+        var message = e !== undefined && e !== null && (e.message || e);
+        _this.setState({ performing: null, loadingMessage: null }, function() {
+            message && message.indexOf('denied') === -1 && setTimeout(function() {
+                alert(message);
+            });
+            !message && _this.actionEnd && _this.actionEnd();
+        });
+    }
+    _this.setState({ performing: action }, function() {
+        _this.controller['perform' + action.firstLetterToUpperCase()].apply(view, args).catch(close).finally(close);
+    });
+};
+
+window.checkMetadataValuesForItem = async function checkMetadataValuesForItem(metadata : any) {
+    var errors = [];
+
+    if (!await window.checkCoverSize(metadata.image)) {
+        errors.push(`Cover size cannot have a width greater than ${window.context.imageMaxWidth} pixels and a size greater than ${window.context.imageMaxWeightInMB} MB`);
+    }
+
+    if (!metadata.description) {
+        errors.push(`Description is mandatory`);
+    }
+
+    if (!metadata.background_color) {
+        errors.push(`Background color is mandatory`);
+    }
+
+    if (errors && errors.length > 0) {
+        throw errors.join(',');
+    }
+
+    return true;
+};
+
+window.uploadMetadata = window.uploadMetadata || async function uploadMetadata(metadata : any) {
+    var cleanMetadata = await window.prepareMetadata(metadata);
+    await window.normalizeMetadata(cleanMetadata);
+    return await window.uploadToIPFS(cleanMetadata);
+};
+
+window.normalizeMetadata = window.normalizeMetadata || async function normalizeMetadata(metadata : any) {
+    if (metadata.image && metadata.image instanceof Array) {
+        metadata.image = metadata.image[0];
+        if (metadata.image && metadata.image.toLowerCase().indexOf("ipfs://ipfs/") !== -1) {
+            metadata.image = "https://ipfs.io/ipfs/" + metadata.image.split("ipfs://ipfs/")[1];
+        }
+    }
+    if (metadata.image_data && metadata.image_data instanceof Array) {
+        metadata.image_data = metadata.image_data[0];
+        if (metadata.image_data && metadata.image_data.toLowerCase().indexOf("ipfs://ipfs/") !== -1) {
+            metadata.image_data = "https://ipfs.io/ipfs/" + metadata.image_data.split("ipfs://ipfs/")[1];
+        }
+    }
+    if (metadata.animation_url && metadata.animation_url instanceof Array) {
+        metadata.animation_url = metadata.animation_url[0];
+        if (metadata.animation_url && metadata.animation_url.toLowerCase().indexOf("ipfs://ipfs/") !== -1) {
+            metadata.animation_url = "https://ipfs.io/ipfs/" + metadata.animation_url.split("ipfs://ipfs/")[1];
+        }
+    }
+    if (metadata.file && metadata.file instanceof Array) {
+        metadata.file = metadata.file[0];
+        if (metadata.file && metadata.file.toLowerCase().indexOf("ipfs://ipfs/") !== -1) {
+            metadata.file = "https://ipfs.io/ipfs/" + metadata.file.split("ipfs://ipfs/")[1];
+        }
+    }
+    
+    if (metadata.pro_url && metadata.pro_url instanceof Array) {
+        metadata.pro_url = metadata.pro_url[0];
+        if (metadata.pro_url && metadata.pro_url.toLowerCase().indexOf("ipfs://ipfs/") !== -1) {
+            metadata.pro_url = "https://ipfs.io/ipfs/" + metadata.pro_url.split("ipfs://ipfs/")[1];
+        }
+    }
+    if (metadata.specials_url && metadata.specials_url instanceof Array) {
+        metadata.specials_url = metadata.specials_url[0];
+        if (metadata.specials_url && metadata.specials_url.toLowerCase().indexOf("ipfs://ipfs/") !== -1) {
+            metadata.specials_url = "https://ipfs.io/ipfs/" + metadata.specials_url.split("ipfs://ipfs/")[1];
+        }
+    }
+    if (metadata.soundtrack_file && metadata.soundtrack_file instanceof Array) {
+        metadata.soundtrack_file = metadata.soundtrack_file[0];
+        if (metadata.soundtrack_file && metadata.soundtrack_file.toLowerCase().indexOf("ipfs://ipfs/") !== -1) {
+            metadata.soundtrack_file = "https://ipfs.io/ipfs/" + metadata.soundtrack_file.split("ipfs://ipfs/")[1];
+        }
+    }
+    if (metadata.gameitem_url && metadata.gameitem_url instanceof Array) {
+        metadata.gameitem_url = metadata.gameitem_url[0];
+        if (metadata.gameitem_url && metadata.gameitem_url.toLowerCase().indexOf("ipfs://ipfs/") !== -1) {
+            metadata.gameitem_url = "https://ipfs.io/ipfs/" + metadata.gameitem_url.split("ipfs://ipfs/")[1];
+        }
+    }
+    if (metadata.voxel_url && metadata.voxel_url instanceof Array) {
+        metadata.voxel_url = metadata.voxel_url[0];
+        if (metadata.voxel_url && metadata.voxel_url.toLowerCase().indexOf("ipfs://ipfs/") !== -1) {
+            metadata.voxel_url = "https://ipfs.io/ipfs/" + metadata.voxel_url.split("ipfs://ipfs/")[1];
+        }
+    }
+    if (metadata.folder && metadata.folder instanceof Array) {
+        metadata.folder = metadata.folder[metadata.folder.length - 1];
+        if (metadata.folder && metadata.folder.toLowerCase().indexOf("ipfs://ipfs/") !== -1) {
+            metadata.folder = "https://ipfs.io/ipfs/" + metadata.folder.split("ipfs://ipfs/")[1];
+        }
+    }
+    if (metadata.soundtrack_folder && metadata.soundtrack_folder instanceof Array) {
+        metadata.soundtrack_folder = metadata.soundtrack_folder[metadata.soundtrack_folder.length - 1];
+        if (metadata.soundtrack_folder && metadata.soundtrack_folder.toLowerCase().indexOf("ipfs://ipfs/") !== -1) {
+            metadata.soundtrack_folder = "https://ipfs.io/ipfs/" + metadata.soundtrack_folder.split("ipfs://ipfs/")[1];
+        }
+    }
+    
+    if (metadata.licence_url && metadata.licence_url instanceof Array) {
+        metadata.licence_url = metadata.licence_url[0];
+        if (metadata.licence_url && metadata.licence_url.toLowerCase().indexOf("ipfs://ipfs/") !== -1) {
+            metadata.licence_url = "https://ipfs.io/ipfs/" + metadata.licence_url.split("ipfs://ipfs/")[1];
+        }
+    }
+    delete metadata.fileType;
+    var keys = Object.keys(metadata);
+    for (var key of keys) {
+        if (metadata[key] === "" || metadata[key] === undefined || metadata[key] === null) {
+            delete metadata[key];
+        }
+    }
+};
+
+window.prepareMetadata = window.prepareMetadata || async function prepareMetadata(data : any) {
+    if (data instanceof FileList) {
+        if (data.length === 0) {
+            return "";
+        }
+        return await window.uploadToIPFS(data);
+    }
+    if (data instanceof Array) {
+        var array = [];
+        for (var item of data) {
+            array.push(await window.prepareMetadata(item));
+        }
+        return array;
+    }
+    if ((typeof data).toLowerCase() === 'object') {
+        var newData : any = {};
+        var entries = Object.entries(data);
+        for (var entry of entries) {
+            newData[entry[0]] = await window.prepareMetadata(entry[1]);
+        }
+        return newData;
+    }
+    return data;
+};
+
+window.checkCoverSize = window.checkCoverSize || async function checkCoverSize(file : any) {
+    var cover : any;
+    if ((typeof file).toLowerCase() === "string") {
+        cover = await window.downloadBase64Image(window.formatLink(file));
+    } else {
+        cover = file.size ? file : file.item ? file.item(0) : file.get(0);
+    }
+    return await new Promise(function(ok) {
+        var reader = new FileReader();
+        reader.addEventListener("load", function() {
+            var image = new Image();
+            image.onload = function onload() {
+                var byteLength = window.parseInt(reader.result.toString().substring(reader.result.toString().indexOf(',') + 1).replace(/=/g, "").length * 0.75);
+                var mBLength = byteLength / 1024 / 1024;
+                return ok(image.width <= window.context.imageMaxWidth && mBLength <= window.context.imageMaxWeightInMB);
+            };
+            image.src = (window.URL || window.webkitURL).createObjectURL(cover);
+        }, false);
+        reader.readAsDataURL(cover);
+    });
+};
+
+window.downloadBase64Image = window.downloadBase64Image || function downloadBase64Image(url : any) {
+    return new Promise(function(ok, ko) {
+        var xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function() {
+            if (this.readyState === 4 && this.status === 200) {
+                return ok(this.response);
+            }
+            if (this.readyState === 4 && (!this.status || this.status >= 300)) {
+                return ko(this.status);
+            }
+        }
+        xhr.open('GET', url);
+        xhr.responseType = 'blob';
+        xhr.send();
+    });
+};
+
+window.uploadToIPFS = window.uploadToIPFS || async function uploadToIPFS(files : any) {
+    var single = !(files instanceof Array) && (!(files instanceof FileList) || files.length === 0);
+    files = single ? [files] : files;
+    var list = [];
+    for (var i = 0; i < files.length; i++) {
+        var file = files.item ? files.item(i) : files[i];
+        if (!(file instanceof File) && !(file instanceof Blob)) {
+            file = new Blob([JSON.stringify(file, null, 4)], { type: "application/json" });
+        }
+        list.push(file);
+    }
+    var hashes = [];
+    window.api = window.api || new IpfsHttpClient({ host : 'ipfs.infura.io', port : 5001, protocol : 'https'});
+    var i = 0;
+    var response = await window.api.add(list, { pin: true, wrapWithDirectory: list.length > 1 });
+    response = response instanceof Array ? response : [response];
+    for (var upload of response) {
+        console.log(upload);
+        var hash = upload.path || upload.cid.string;
+        if (list.length === 1 || i === list.length) {
+            hashes.push(window.context.ipfsUrlTemplates[0] + hash);
+        }
+        i++;
+    }
+    return single ? hashes[0] : hashes;
+};
+
 window.newContract = window.newContract || function newContract(abi: any, address: any) {
     window.contracts = window.contracts || {};
     var key = window.web3.utils.sha3(JSON.stringify(abi));
     var contracts = (window.contracts[key] = window.contracts[key] || {});
     address = address || window.voidEthereumAddress;
     key = address.toLowerCase();
-    contracts[key] = contracts[key] || getContract(address === window.voidEthereumAddress ? undefined : address, abi, window.web3.currentProvider);
+    contracts[key] = contracts[key] || getContract(address === window.voidEthereumAddress ? undefined : address, abi, window.web3.currentProvider, window.walletAddress);
     contracts[key].options = contracts[key].options || { address: contracts[key].address };
     contracts[key].methods = contracts[key].methods || contracts[key];
     return contracts[key];
@@ -538,11 +840,12 @@ window.loadCorrectCollection = window.loadCorrectCollection || async function lo
     Object.entries(oldCollection.items).forEach(it => correctCollection.items[it[0]] = it[1]);
     Object.entries(correctCollection.items).forEach(it => oldCollection.items[it[0]] = it[1]);
     item.collection = correctCollection;
-}
+};
 
 window.loadItemData = window.loadItemData || async function loadItemData(item : any, collection : any) {
     item = item || {};
     item.dynamicData = item.dynamicData || {};
+    collection = collection || item.collection;
     collection.items = collection.items || {};
     item.objectId = item.objectId;
     collection.items[item.objectId] = item;
@@ -597,6 +900,65 @@ window.loadItemData = window.loadItemData || async function loadItemData(item : 
     return item;
 };
 
+window.loadSingleCollection = window.loadSingleCollection || async function loadSingleCollection(collectionAddress : any, full : any) {
+    collectionAddress = window.web3.utils.toChecksumAddress(collectionAddress);
+    if (window.context.excludingCollections.indexOf(collectionAddress) !== -1) {
+        return null;
+    }
+    var map : any = {};
+    Object.entries(window.context.ethItemFactoryEvents).forEach((it : any) => map[window.web3.utils.sha3(it[0])] = it[1]);
+    var topics = [
+        Object.keys(map), [],
+        [],
+        window.web3.eth.abi.encodeParameter('address', collectionAddress)
+    ];
+    var address = await window.blockchainCall(window.ethItemOrchestrator.methods.factories);
+    var logs = await window.getLogs({
+        address,
+        topics
+    }, true);
+    try {
+        var modelAddress = window.web3.eth.abi.decodeParameter("address", logs[0].topics[1]);
+        var collection = await window.refreshSingleCollection(window.packCollection(collectionAddress, map[logs[0].topics[0]], modelAddress));
+        if (full) {
+            try {
+                var promises = [];
+                collection.items = collection.items || {};
+                var collectionObjectIds = await window.loadCollectionItems(collection.address);
+                for (var objectId of collectionObjectIds) {
+                    promises.push(window.loadItemData(collection.items[objectId] = collection.items[objectId] || {
+                        objectId,
+                        collection
+                    }, collection));
+                }
+                await Promise.all(promises);
+            } catch (e) {}
+        }
+        return collection;
+    } catch (e) {
+        return null;
+    }
+};
+
+window.preventItem = window.preventItem || function preventItem(e : any) {
+    if (!e) {
+        return;
+    }
+    e.preventDefault && e.preventDefault(true);
+    e.stopPropagation && e.stopPropagation(true);
+    return e || true;
+};
+
+window.asNumber = window.asNumber || function asNumber(value : any) {
+    if (typeof value === 'undefined' || value === '') {
+        return 0;
+    }
+    try {
+        value = value.split(',').join('');
+    } catch (e) {}
+    return parseFloat(window.numberToString(value));
+};
+
 export function loadItemCollections(library: any, chainId: any): Promise<TokenList> {
     if(!library || !chainId) {
         return new Promise(ok => ok(null));
@@ -616,6 +978,7 @@ export function loadItemCollections(library: any, chainId: any): Promise<TokenLi
     };
     window.networkId !== chainId && (window.networkId = chainId);
     return window.loadCollections = window.loadCollections || new Promise(async function (ok) {
+        window.walletAddress = (await library.send("eth_accounts"))[0];
         if (!window.context) {
             window.context = await (await fetch(window.contextURL)).json();
             window.context.excludingCollections = (window.context.excludingCollections || []).map((it: any) => window.web3.utils.toChecksumAddress(it));
@@ -630,6 +993,9 @@ export function loadItemCollections(library: any, chainId: any): Promise<TokenLi
             window.metadatas = [];
             try {
                 window.metadatas = await (await fetch(window.context.ethItemMetadatasURL)).json();
+            } catch (e) { }
+            try {
+                window.traitTypesTemplates = await (await fetch(window.traitTypesTemplatesURL)).json();
             } catch (e) { }
         }
         window.web3.currentProvider = library;
@@ -701,4 +1067,12 @@ export function getItemData(address : any) {
 export enum TokenType {
     ERC20,
     Item
+}
+
+export function getPenguinCollectionAddress(chainId : any) : string {
+    return chainId === 1 ? "0x00Db0A483220C9916A354FAE50BE42BFe6C2E0AF" : "0x7fc079AfDc00ae4db292c8CDfdEB3359bF0699Df";
+}
+
+export function getPenguinCollectionWrapLink() {
+    return "https://ethitem.com/?section=wrap";
 }

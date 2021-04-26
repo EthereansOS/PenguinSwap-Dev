@@ -1,0 +1,104 @@
+import React, { useEffect, useState } from "react"
+
+import InnerLoader from './innerLoader'
+
+export default function CreateOrEditTraitTypes({ metadataType, state, onAttributes }) {
+
+    const [traitTypesTemplates, setTraitTypesTemplates] = useState(window.traitTypesTemplates);
+    const [attributes, setAttributes] = useState(state.attributes || []);
+    const [newTraitType, setNewTraitType] = useState("");
+
+    window.traitTypesTemplates = window.traitTypesTemplates || traitTypesTemplates;
+
+    useEffect(function () {
+        !window.traitTypesTemplates && window.AJAXRequest('data/traitTypesTemplates.json').then(setTraitTypesTemplates);
+    }, []);
+
+    useEffect(function() {
+        onAttributes && onAttributes(attributes);
+    }, [attributes]);
+
+    var standardTraitTypes = [];
+    if (traitTypesTemplates) {
+        standardTraitTypes.push(...traitTypesTemplates["global"]);
+        standardTraitTypes.push(...traitTypesTemplates[metadataType]);
+    }
+
+    var customTraitTypes = attributes.filter(it => it.trait_type && standardTraitTypes.indexOf(it.trait_type) === -1).map(it => it.trait_type);
+
+    function addCustomTraitType(e) {
+        window.preventItem(e);
+        var allTraitTypes = standardTraitTypes.map(it => it.split(' ').join('').toLowerCase());
+        allTraitTypes.push(...customTraitTypes.map(it => it.split(' ').join('').toLowerCase()));
+        if (allTraitTypes.indexOf(newTraitType.split(" ").join('').toLowerCase()) !== -1) {
+            return;
+        }
+        var newAttributes = attributes.map(it => it);
+        newAttributes.push({
+            trait_type: newTraitType,
+            value: ''
+        });
+        setAttributes(newAttributes);
+        setNewTraitType("");
+    }
+
+    function removeCustomTraitType(e) {
+        window.preventItem(e);
+        var key = e.currentTarget.dataset.key;
+        var index = attributes.indexOf(attributes.filter(it => it.trait_type === key));
+        var newAttributes = attributes.map(it => it);
+        newAttributes.splice(index, 1);
+        setAttributes(newAttributes);
+    }
+
+    function renterTraitTypeValue(key) {
+        try {
+            return attributes.filter(it => it.trait_type === key)[0].value;
+        } catch (e) {
+            return "";
+        }
+    }
+
+    function onTraitTypeValueChange(e) {
+        window.preventItem(e);
+        var key = e.currentTarget.dataset.key;
+        var value = e.currentTarget.value;
+        var newAttributes = attributes.map(it => it);
+        try {
+            newAttributes.filter(it => it.trait_type === key)[0].value = value;
+        } catch (e) {
+            newAttributes.push({
+                trait_type: key,
+                value
+            })
+        }
+        setAttributes(newAttributes);
+    }
+
+    function renderTraitTypeElement(it, isCustom) {
+        return <section className="MetaImputThings" key={it}>
+            {isCustom && <a className="RemoveAthing" href="javascript:;" data-key={it} onClick={removeCustomTraitType}>X</a>}
+            <label className="createWhat">
+                <p>{it}</p>
+                <input className="ITEMURLINPUT" id={it.split(' ').join('')} data-key={it} type="text" value={renterTraitTypeValue(it)} onChange={onTraitTypeValueChange} />
+            </label>
+        </section>
+    }
+
+    function renderNewTraitType() {
+        return <section className="NewTrait">
+            <h6>Add Custom Trait</h6>
+            <input className="ITEMURLINPUT" type="text" value={newTraitType} onChange={e => setNewTraitType(window.preventItem(e).currentTarget.value)} />
+            <a className="AddAthing" href="javascript:;" onClick={addCustomTraitType}>Add</a>
+        </section>
+    }
+
+    return !traitTypesTemplates ? <InnerLoader /> : <section className="MetaDataThings">
+        <section className="spacialImputs">
+            <h3>Traits</h3>
+            {standardTraitTypes.map(it => renderTraitTypeElement(it))}
+            {customTraitTypes.map(it => renderTraitTypeElement(it, true))}
+            {renderNewTraitType()}
+        </section>
+    </section>
+}
