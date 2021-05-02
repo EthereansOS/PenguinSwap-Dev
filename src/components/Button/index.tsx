@@ -64,7 +64,60 @@ export const ButtonPrimary = styled(Base)`
     opacity: ${({ altDisabledStyle }) => (altDisabledStyle ? '0.5' : '1')};
   }
 `
-
+export const ButtonTokensel = styled(Base)`
+  background-color: ${({ theme }) => theme.primary2};
+  color: white;
+  font-size: 13px;
+  font-weight: 500;
+  &:focus {
+    box-shadow: 0 0 0 1pt ${({ theme, disabled }) => !disabled && darken(0.03, theme.primary2)};
+    background-color: ${({ theme, disabled }) => !disabled && darken(0.03, theme.primary2)};
+  }
+  &:hover {
+    background-color: ${({ theme, disabled }) => !disabled && darken(0.03, theme.primary2)};
+  }
+  &:active {
+    box-shadow: 0 0 0 1pt ${({ theme, disabled }) => !disabled && darken(0.05, theme.primary2)};
+    background-color: ${({ theme, disabled }) => !disabled && darken(0.05, theme.primary2)};
+  }
+  :disabled {
+    opacity: 0.4;
+    :hover {
+      cursor: auto;
+      background-color: ${({ theme }) => theme.primary5};
+      box-shadow: none;
+      border: 1px solid transparent;
+      outline: none;
+    }
+  }
+`
+export const ButtonTokennope = styled(Base)`
+  background-color: ${({ theme }) => theme.primary2};
+  color: white;
+  font-size: 13px;
+  font-weight: 500;
+  &:focus {
+    box-shadow: 0 0 0 1pt ${({ theme, disabled }) => !disabled && darken(0.03, theme.primary2)};
+    background-color: ${({ theme, disabled }) => !disabled && darken(0.03, theme.primary2)};
+  }
+  &:hover {
+    background-color: ${({ theme, disabled }) => !disabled && darken(0.03, theme.primary2)};
+  }
+  &:active {
+    box-shadow: 0 0 0 1pt ${({ theme, disabled }) => !disabled && darken(0.05, theme.primary2)};
+    background-color: ${({ theme, disabled }) => !disabled && darken(0.05, theme.primary2)};
+  }
+  :disabled {
+    opacity: 0.4;
+    :hover {
+      cursor: auto;
+      background-color: ${({ theme }) => theme.primary5};
+      box-shadow: none;
+      border: 1px solid transparent;
+      outline: none;
+    }
+  }
+`
 export const ButtonLight = styled(Base)`
   background-color: ${({ theme }) => theme.primary2};
   color: white;
@@ -316,5 +369,12 @@ export function ButtonRadio({ active, ...rest }: { active?: boolean } & ButtonPr
     return <ButtonWhite {...rest} />
   } else {
     return <ButtonPrimary {...rest} />
+  }
+}
+export function ButtonSwitch({ active, ...rest }: { active?: boolean } & ButtonProps) {
+  if (!active) {
+    return <ButtonTokensel {...rest} />
+  } else {
+    return <ButtonTokennope {...rest} />
   }
 }

@@ -216,9 +216,11 @@ export default function CurrencyInputPanel({
             <Aligner>
               {pair ? (
                 <DoubleCurrencyLogo currency0={pair.token0} currency1={pair.token1} size={24} margin={true} />
-              ) : currency ? (
+              ) : currency && tokenType === TokenType.ERC20 ? (
                 <CurrencyLogo currency={currency} size={'24px'} />
-              ) : null}
+              ) : currency && tokenType === TokenType.Item ? (
+                <CurrencyLogo currency={currency} size={'50px'} />
+               ) : null}
               {pair ? (
                 <StyledTokenName className="pair-name-container">
                   {pair?.token0.symbol}:{pair?.token1.symbol}

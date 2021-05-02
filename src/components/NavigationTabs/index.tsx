@@ -12,7 +12,7 @@ import { useDispatch } from 'react-redux'
 import { AppDispatch } from 'state'
 import { resetMintState } from 'state/mint/actions'
 import { TokenType } from 'utils/itemIntegration'
-import { ButtonRadio } from 'components/Button'
+import { ButtonSwitch } from 'components/Button'
 
 const Tabs = styled.div`
   ${({ theme }) => theme.flexRowNoWrap}
@@ -89,8 +89,8 @@ export function FindPoolTabs({
           <StyledArrowLeft />
         </HistoryLink>
         <ActiveText>Import Pool</ActiveText>
-        {onTokenTypeChange && <ButtonRadio active={tokenType === TokenType.ERC20} onClick={() => onTokenTypeChange(TokenType.ERC20)}>ERC-20</ButtonRadio>}
-        {onTokenTypeChange && <ButtonRadio active={tokenType === TokenType.Item} onClick={() => onTokenTypeChange(TokenType.Item)}>Item</ButtonRadio>}
+        {onTokenTypeChange && <ButtonSwitch style={{ padding: '0.5rem 0.5rem' }} active={tokenType === TokenType.ERC20} onClick={() => onTokenTypeChange(TokenType.ERC20)}>ERC-20</ButtonSwitch>}
+        {onTokenTypeChange && <ButtonSwitch style={{ padding: '0.5rem 0.5rem' }} active={tokenType === TokenType.Item} onClick={() => onTokenTypeChange(TokenType.Item)}>Item</ButtonSwitch>}
         <Settings />
       </RowBetween>
     </Tabs>
