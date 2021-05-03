@@ -793,16 +793,25 @@ window.loadCollectionItems = window.loadCollectionItems || async function loadCo
         if (collection.category === 'W1155' && window.context.W1155GroupMode === true) {
             collectionAddress = window.globalCollections.filter((it: any) => it.category === 'W1155' && it.sourceAddress === collection.sourceAddress).map((it : any) => it.address);
         }
+        if(collection.category === 'W20') {
+            collectionAddress = window.globalCollections.filter((it: any) => it.category === 'W20').map((it : any) => it.address);
+        }
+        if(collection.category === 'Native' && collection.symbol === 'cFARM') {
+            collectionAddress = window.globalCollections.filter((it: any) => it.category === 'Native' && it.symbol === 'cFARM').map((it : any) => it.address);
+        }
     }
     window.itemObjectIdLinker = window.itemObjectIdLinker || {};
-    var logs = await window.getLogs({
+    if(!collectionAddress || collectionAddress.length === 0) {
+        return [];
+    }
+    var logs = (await window.getLogs({
         address: collectionAddress,
         topics: [window.web3.utils.sha3("NewItem(uint256,address)")]
-    });
-    logs = logs && logs.length > 0 ? logs : await window.getLogs({
+    })) || [];
+    (logs.length === 0 || collectionAddress instanceof Array) && logs.push(...(await window.getLogs({
         address: collectionAddress,
         topics: [window.web3.utils.sha3("Mint(uint256,address,uint256)")]
-    });
+    })));
     var collectionObjectIds : any = {};
     for (var log of logs) {
         var objectId;
@@ -998,11 +1007,28 @@ export function loadItemCollections(library: any, chainId: any): Promise<TokenLi
                 window.traitTypesTemplates = await (await fetch(window.traitTypesTemplatesURL)).json();
             } catch (e) { }
         }
+        window.context.W1155GroupMode = true;
         window.web3.currentProvider = library;
         window.ethItemOrchestrator = window.newContract(window.context.ethItemOrchestratorABI, window.getNetworkElement("ethItemOrchestratorAddress"));
-        var collections = await window.loadCollectionsWork();
+        await window.loadCollectionsWork();
+        window.globalCollections.filter((it : any) => it.image === null || it.image === undefined).forEach((it :any) => it.image = "https://raw.githubusercontent.com/EthereansOS/ITEMS-Interface/main/" + window.getElementImage(it));
+        var allCollections = [window.globalCollections.filter((it : any) => it.category === 'W20')[0]];
+        var collections = window.globalCollections.filter((it : any) => it.category !== 'W20');
+        if(window.context.W1155GroupMode === true) {
+            var sub = collections.filter((it : any) => it.category === 'W1155');
+            sub.forEach((it : any) => collections.splice(collections.indexOf(it), 1));
+            var subs : any = {};
+            for(var collection of sub) {
+                (subs[collection.sourceAddress] = (subs[collection.sourceAddress] || [])).push(collection);
+            }
+            Object.values(subs).forEach((it : any) => collections.unshift(it[0]));
+        }
+        var sub = collections.filter((it : any) => it.symbol === 'cFARM');
+        sub.forEach((it : any) => collections.splice(collections.indexOf(it), 1));
+        collections.push(sub[0]);
+        allCollections.push(... collections);
         var emptyArrayString: string[] = [];
-        window.itemList.tokens = collections.map((it: any) => {
+        window.itemList.tokens = allCollections.map((it: any) => {
             return {
                 chainId,
                 address: it.address,
@@ -1034,7 +1060,8 @@ export function loadItemCollectionTokens(address : any) : Promise<TokenList> {
         logoURI: collection.image,
         tags: {}
     }
-    return new Promise(async function(ok) {
+    window.loadItemCollectionTokensPromises = window.loadItemCollectionTokensPromises || {};
+    return window.loadItemCollectionTokensPromises[address] = window.loadItemCollectionTokensPromises[address] || new Promise(async function(ok) {
         if(collection.tokenList.tokens.length === 0) {
             collection.tokenList.tokens = (await window.loadItemCollectionTokensWork(collection)) || [];
         }
