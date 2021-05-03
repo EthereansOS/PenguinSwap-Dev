@@ -3,7 +3,7 @@ import styled from 'styled-components'
 import Settings from '../Settings'
 import { RowBetween } from '../Row'
 import { TYPE } from '../../theme'
-import { ButtonRadio } from '../Button'
+import { ButtonSwitch } from '../Button'
 import { TokenType } from 'utils/itemIntegration'
 
 const StyledSwapHeader = styled.div`
@@ -27,8 +27,8 @@ export default function SwapHeader({
     <StyledSwapHeader>
       <RowBetween>
         <TYPE.black fontWeight={500}>Swap</TYPE.black>
-        {onTokenTypeChange && <ButtonRadio active={tokenType === TokenType.ERC20} onClick={() => onTokenTypeChange(TokenType.ERC20)}>ERC-20</ButtonRadio>}
-        {onTokenTypeChange && <ButtonRadio active={tokenType === TokenType.Item} onClick={() => onTokenTypeChange(TokenType.Item)}>Item</ButtonRadio>}
+        {onTokenTypeChange && <ButtonSwitch active={tokenType === TokenType.ERC20} onClick={() => onTokenTypeChange(TokenType.ERC20)}>ERC20</ButtonSwitch>}
+        {onTokenTypeChange && <ButtonSwitch active={tokenType === TokenType.Item} onClick={() => onTokenTypeChange(TokenType.Item)}>NFTs</ButtonSwitch>}
         <Settings />
       </RowBetween>
     </StyledSwapHeader>

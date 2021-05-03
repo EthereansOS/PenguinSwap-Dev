@@ -30,6 +30,8 @@ export interface Colors {
   primary3: Color
   primary4: Color
   primary5: Color
+  primaryI: Color
+  primaryN: Color
 
   primaryText1: Color
 
