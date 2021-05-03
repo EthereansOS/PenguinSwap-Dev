@@ -130,8 +130,6 @@
     "@types/workbox-precaching": "^4.3.0",
     "@types/workbox-routing": "^4.3.0",
     "@types/workbox-strategies": "^4.3.0",
-    "@uniswap/default-token-list": "^2.0.0",
-    "create-react-class": "^15.7.0",
-    "ipfs-http-client": "^49.0.4"
+    "@uniswap/default-token-list": "^2.0.0"
   }
 }
