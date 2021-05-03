@@ -219,7 +219,7 @@ export default function CurrencyInputPanel({
               ) : currency && tokenType === TokenType.ERC20 ? (
                 <CurrencyLogo currency={currency} size={'24px'} />
               ) : currency && tokenType === TokenType.Item ? (
-                <CurrencyLogo currency={currency} size={'50px'} />
+                <CurrencyLogo currency={currency} size={'24px'} />
                ) : null}
               {pair ? (
                 <StyledTokenName className="pair-name-container">

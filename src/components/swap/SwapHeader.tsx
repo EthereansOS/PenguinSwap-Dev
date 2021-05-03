@@ -27,7 +27,7 @@ export default function SwapHeader({
     <StyledSwapHeader>
       <RowBetween>
         <TYPE.black fontWeight={500}>Swap</TYPE.black>
-        {onTokenTypeChange && <ButtonSwitch active={tokenType === TokenType.ERC20} onClick={() => onTokenTypeChange(TokenType.ERC20)}>ERC20</ButtonSwitch>}
+        {onTokenTypeChange && <ButtonSwitch active={tokenType === TokenType.ERC20} onClick={() => onTokenTypeChange(TokenType.ERC20)}>ERC20s</ButtonSwitch>}
         {onTokenTypeChange && <ButtonSwitch active={tokenType === TokenType.Item} onClick={() => onTokenTypeChange(TokenType.Item)}>NFTs</ButtonSwitch>}
         <Settings />
       </RowBetween>

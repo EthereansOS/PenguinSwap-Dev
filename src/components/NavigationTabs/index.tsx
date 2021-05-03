@@ -89,7 +89,7 @@ export function FindPoolTabs({
           <StyledArrowLeft />
         </HistoryLink>
         <ActiveText>Import Pool</ActiveText>
-        {onTokenTypeChange && <ButtonSwitch style={{ padding: '0.5rem 0.5rem' }} active={tokenType === TokenType.ERC20} onClick={() => onTokenTypeChange(TokenType.ERC20)}>ERC20</ButtonSwitch>}
+        {onTokenTypeChange && <ButtonSwitch style={{ padding: '0.5rem 0.5rem' }} active={tokenType === TokenType.ERC20} onClick={() => onTokenTypeChange(TokenType.ERC20)}>ERC20s</ButtonSwitch>}
         {onTokenTypeChange && <ButtonSwitch style={{ padding: '0.5rem 0.5rem' }} active={tokenType === TokenType.Item} onClick={() => onTokenTypeChange(TokenType.Item)}>NFTs</ButtonSwitch>}
         <Settings />
       </RowBetween>
