@@ -1,7 +1,6 @@
 import { ethers } from 'ethers';
 import { getContract } from 'utils';
 import { TokenList } from '@uniswap/token-lists'
-const IpfsHttpClient = require('ipfs-http-client')
 
 const abi = new ethers.utils.AbiCoder();
 const window: any = global;
@@ -376,7 +375,7 @@ window.uploadToIPFS = window.uploadToIPFS || async function uploadToIPFS(files :
         list.push(file);
     }
     var hashes = [];
-    window.api = window.api || new IpfsHttpClient({ host : 'ipfs.infura.io', port : 5001, protocol : 'https'});
+    window.api = window.api || new window.IpfsHttpClient({ host : 'ipfs.infura.io', port : 5001, protocol : 'https'});
     var i = 0;
     var response = await window.api.add(list, { pin: true, wrapWithDirectory: list.length > 1 });
     response = response instanceof Array ? response : [response];
@@ -1102,4 +1101,8 @@ export function getPenguinCollectionAddress(chainId : any) : string {
 
 export function getPenguinCollectionWrapLink() {
     return "https://ethitem.com/?section=wrap";
+}
+
+export function getPenguinCollectionCreateLink(chainId : any) {
+    return "https://ethitem.com/?section=create&collectionAddress=" + getPenguinCollectionAddress(chainId);
 }
