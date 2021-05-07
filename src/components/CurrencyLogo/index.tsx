@@ -41,13 +41,16 @@ export default function CurrencyLogo({
     if (currency === ETHER) return []
 
     if (currency instanceof Token) {
-      if (currency instanceof WrappedTokenInfo) {
-        return [...uriLocations, getTokenLogoURL(currency.address)]
-      }
-
       var item : any = getItemData(currency.address);
       if(item) {
         return [item.image];
+      }
+
+      if (currency instanceof WrappedTokenInfo) {
+        if(currency.logoURI.startsWith("data")) {
+          return [currency.logoURI]
+        }
+        return [...uriLocations, getTokenLogoURL(currency.address)]
       }
 
       return [getTokenLogoURL(currency.address)]

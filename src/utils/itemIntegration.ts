@@ -589,7 +589,7 @@ window.loadCollectionsWork = window.loadCollectionsWork || async function loadCo
     var map: any = {};
     Object.entries(window.context.ethItemFactoryEvents).forEach(it => map[window.web3.utils.sha3(it[0])] = it[1]);
     var topics: any[] = [[Object.keys(map).filter(key => map[key].indexOf("721") === -1)]];
-    topics.push([Object.keys(map).filter(key => map[key].indexOf("721") !== -1), [], window.web3.eth.abi.encodeParameter("uint256", "2")])
+    topics.push([Object.keys(map).filter(key => map[key].indexOf("721") !== -1), [], [window.web3.eth.abi.encodeParameter("uint256", "2"),window.web3.eth.abi.encodeParameter("uint256", "3")]])
     var address = await window.blockchainCall(window.ethItemOrchestrator.methods.factories);
     (window.getNetworkElement("additionalFactories") || []).map((it: any) => window.web3.utils.toChecksumAddress(it)).filter((it: any) => address.indexOf(it) === -1).forEach((it: any) => address.push(it));
     var collections: any[] = [];
@@ -726,7 +726,7 @@ window.tryRetrieveMetadata = window.tryRetrieveMetadata || async function tryRet
         if (item.metadataLink !== "") {
             item.image = window.formatLink(item.metadataLink);
             try {
-                item.metadata = await window.AJAXRequest(window.formatLink(item.metadataLink));
+                item.metadata = item.metadataLink.startsWith("data:application/json;base64,") ? JSON.parse(window.atob(item.metadataLink.substring("data:application/json;base64,".length))) : await window.AJAXRequest(window.formatLink(item.metadataLink));
                 if (typeof item.metadata !== "string") {
                     Object.entries(item.metadata).forEach(it => {
                         if (it[1] === undefined || it[1] === null) {

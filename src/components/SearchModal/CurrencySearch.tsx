@@ -248,7 +248,7 @@ export function CurrencySearch({
                   {({ height }) => (
                     <CurrencyList
                       height={height}
-                      showETH={showETH}
+                      showETH={showETH && !itemCollection}
                       currencies={
                         showExpanded && inactiveTokens ? filteredSortedTokens.concat(inactiveTokens) : filteredSortedTokens
                       }
